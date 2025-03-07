@@ -16,6 +16,8 @@ if "Kode" in df_tickers.columns:
 else:
     print("Kolom 'Kode' tidak ditemukan dalam file.")
     
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+    
 import os
 import shutil
 import zipfile
@@ -93,3 +95,85 @@ driver.quit()
 # Print daftar kode saham yang berhasil di-download
 print("\n Kode saham yang berhasil di-download & diekstrak:")
 print(downloaded_tickers)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# Debug: Cek file instance.xbrl
+for kode in downloaded_tickers:
+    saham_folder = os.path.join(base_download_dir, kode)
+    xbrl_path = os.path.join(saham_folder, "instance.xbrl")
+
+    print(f"\n🔍 Mengecek file untuk {kode}...")
+
+    # Cek apakah file ada
+    if os.path.exists(xbrl_path):
+        print(f"✅ {kode}: File instance.xbrl ditemukan!")
+
+        # Coba baca file
+        try:
+            with open(xbrl_path, "r", encoding="utf-8") as file:
+                content = file.readlines()[:5]  # Ambil 10 baris pertama
+                print(f"📄 Isi awal file {kode}:\n" + "".join(content))
+        except Exception as e:
+            print(f"❌ ERROR membaca file {kode}: {e}")
+    else:
+        print(f"❌ {kode}: File instance.xbrl TIDAK ditemukan!")
+        
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# Path utama
+base_download_dir = r"C:\Users\Lenovo\OneDrive\Dokumen\Coding\Semester 4\Big Data Platforms\Tugas 1\Laporan_Keuangan"
+
+# Cek folder emiten yang ada
+folders = [f for f in os.listdir(base_download_dir) if os.path.isdir(os.path.join(base_download_dir, f))]
+downloaded_tickers = folders
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+import pymongo
+from bs4 import BeautifulSoup
+
+# 📂 Path ke folder laporan keuangan
+base_download_dir = r"C:\Users\Lenovo\OneDrive\Dokumen\Coding\Semester 4\Big Data Platforms\Tugas 1\Laporan_Keuangan"
+
+# 📌 Koneksi MongoDB
+client = pymongo.MongoClient("mongodb://localhost:27017/")
+db = client["laporan_keuangan"]
+collection = db["xbrl_data"]
+
+# 🔄 Loop semua emiten
+folders = [f for f in os.listdir(base_download_dir) if os.path.isdir(os.path.join(base_download_dir, f))]
+
+print("📂 Emiten yang diproses:", folders)
+
+for kode in folders:
+    emiten_folder = os.path.join(base_download_dir, kode)
+    xbrl_files = [f for f in os.listdir(emiten_folder) if f.endswith(".xbrl")]
+
+    if not xbrl_files:
+        print(f"❌ Tidak ada file XBRL di {kode}")
+        continue
+
+    file_path = os.path.join(emiten_folder, xbrl_files[0])
+    print(f"\n📄 Memproses {file_path}")
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            soup = BeautifulSoup(file, "xml")
+
+        # 🔍 Ambil semua tag dan atribut
+        emiten_data = {"kode_emiten": kode, "data": []}
+        for tag in soup.find_all():
+            tag_info = {
+                "tag_name": tag.name,
+                "text": tag.text.strip(),
+                "attributes": tag.attrs  # Ambil semua atribut dalam bentuk dict
+            }
+            emiten_data["data"].append(tag_info)
+
+        # 🚀 Insert ke MongoDB
+        collection.insert_one(emiten_data)
+        print(f"✅ Data {kode} berhasil dimasukkan ke MongoDB!")
+
+    except Exception as e:
+        print(f"⚠️ Gagal memproses {kode}: {e}")
