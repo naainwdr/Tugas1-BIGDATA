@@ -1,6 +1,6 @@
 # Tugas1-BIGDATA
 
--LAPORAN INGESTION DATA YFINANCE
+LAPORAN INGESTION DATA YFINANCE
 Proses ingestion data dari Yahoo Finance dilakukan untuk mengumpulkan data harga saham secara historis, dan menyimpannya ke dalam MongoDB. Tahapan yang dilakukan:
 
 Mengambil Daftar Saham dari Excel
